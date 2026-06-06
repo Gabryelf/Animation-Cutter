@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PixelForge — Анимация гуманоида из спрайт-листа</title>
+    <!-- Google Fonts & Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(circle at 20% 30%, #0b0e17, #05070c);
+            font-family: 'Inter', sans-serif;
+            color: #eef2ff;
+            padding: 2rem 1.5rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* header */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        .header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #c0e0ff, #a67cff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header h1 i {
+            background: none;
+            -webkit-background-clip: unset;
+            background-clip: unset;
+            color: #a77aff;
+            font-size: 2.2rem;
+        }
+        .sub {
+            color: #9ca3cf;
+            margin-top: 0.6rem;
+            font-weight: 400;
+            font-size: 1.05rem;
+        }
+
+        /* glass panel */
+        .panel {
+            background: rgba(20, 25, 40, 0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            border: 1px solid rgba(120, 130, 200, 0.25);
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.4);
+            padding: 1.8rem;
+            margin-bottom: 2rem;
+            transition: all 0.2s ease;
+        }
+
+        /* upload area */
+        .upload-area {
+            border: 2px dashed rgba(150, 170, 255, 0.5);
+            background: rgba(10, 12, 22, 0.6);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .upload-area:hover {
+            border-color: #8f7eff;
+            background: rgba(30, 35, 55, 0.7);
+        }
+        .upload-icon {
+            font-size: 3.2rem;
+            color: #b0aaff;
+            margin-bottom: 1rem;
+        }
+        .upload-area p {
+            font-weight: 500;
+        }
+        .file-info {
+            font-size: 0.85rem;
+            color: #a9b2e0;
+            margin-top: 0.5rem;
+        }
+
+        /* controls grid */
+        .control-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            align-items: flex-end;
+        }
+        .input-group {
+            flex: 1;
+            min-width: 120px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            color: #bbc3ff;
+            margin-bottom: 0.4rem;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            background: #0c1020;
+            border: 1px solid #2a2f4e;
+            padding: 0.7rem 1rem;
+            border-radius: 1rem;
+            color: white;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #9b8eff;
+            box-shadow: 0 0 0 2px rgba(155, 142, 255, 0.3);
+        }
+        button {
+            background: linear-gradient(105deg, #4f46e5, #7c3aed);
+            border: none;
+            padding: 0.7rem 1.4rem;
+            border-radius: 2rem;
+            font-weight: 600;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.05);
+        }
+        button.secondary {
+            background: rgba(60, 70, 120, 0.7);
+            backdrop-filter: blur(4px);
+            border: 1px solid #5a6ab0;
+        }
+        button.danger {
+            background: linear-gradient(105deg, #b91c1c, #7f1a1a);
+        }
+        .flex-btns {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 1rem 0 0.5rem 0;
+        }
+
+        /* gallery frames */
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid #7c6eff;
+            padding-left: 1rem;
+        }
+        .frames-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 110px));
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+            max-height: 380px;
+            overflow-y: auto;
+            padding: 0.5rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 1.5rem;
+        }
+        .frame-card {
+            background: #0f1322;
+            border-radius: 1rem;
+            padding: 0.6rem;
+            text-align: center;
+            transition: 0.1s;
+            cursor: pointer;
+            border: 1px solid #2b2f4a;
+        }
+        .frame-card:hover {
+            transform: scale(1.02);
+            background: #191e32;
+            border-color: #8a7bff;
+        }
+        .frame-card canvas {
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+            width: 100%;
+            height: auto;
+            max-height: 80px;
+            border-radius: 8px;
+        }
+        .frame-label {
+            font-size: 0.7rem;
+            margin-top: 0.3rem;
+            font-weight: 500;
+            color: #bbccff;
+        }
+
+        /* animation sequence & preview */
+        .sequence-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.8rem;
+        }
+        .preview-block {
+            flex: 1.2;
+            min-width: 220px;
+            background: #080c1a;
+            border-radius: 1.8rem;
+            padding: 1rem;
+            text-align: center;
+        }
+        .preview-canvas {
+            background: #010101;
+            border-radius: 1.2rem;
+            margin: 0.8rem 0;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+            width: 100%;
+            max-width: 260px;
+            aspect-ratio: 1 / 1;
+            object-fit: contain;
+        }
+        .sequence-list {
+            flex: 2;
+            background: rgba(0,0,0,0.25);
+            border-radius: 1.5rem;
+            padding: 1rem;
+        }
+        .seq-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            min-height: 100px;
+            max-height: 210px;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .seq-item {
+            background: #11172b;
+            border-radius: 1rem;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 6px 8px;
+            border: 1px solid #3d3f6e;
+            position: relative;
+            min-width: 75px;
+        }
+        .seq-item canvas {
+            image-rendering: pixelated;
+            width: 56px;
+            height: auto;
+            border-radius: 6px;
+        }
+        .seq-controls {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .seq-controls button {
+            background: #252a48;
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            border-radius: 40px;
+        }
+        .badge-index {
+            font-size: 0.6rem;
+            background: #2f3560;
+            padding: 2px 6px;
+            border-radius: 20px;
+            margin-bottom: 4px;
+        }
+
+        /* speed slider */
+        .speed-slider {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        input[type="range"] {
+            flex: 1;
+            background: #1e2442;
+            height: 4px;
+            border-radius: 5px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.75rem;
+            color: #6f78a5;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #191e30;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #5b6cb0;
+            border-radius: 10px;
+        }
+        @media (max-width: 680px) {
+            body { padding: 1rem; }
+            .panel { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1><i class="fas fa-robot"></i> PixelForge <span style="font-size: 1.8rem;">✦</span></h1>
+        <div class="sub">Анимируй гуманоида из пиксель-арт спрайт-листа · Выбери кадры · Создай анимацию</div>
+    </div>
+
+    <!-- загрузка + параметры -->
+    <div class="panel">
+        <div id="uploadZone" class="upload-area">
+            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+            <p>Нажми или перетащи PNG / pixel-art спрайт-лист</p>
+            <div class="file-info">Поддерживаются спрайт-листы с сеткой кадров (гуманоид, анимация ходьбы, атаки и т.д.)</div>
+            <input type="file" id="fileInput" accept="image/png" style="display: none;">
+        </div>
+
+        <div class="control-row" id="spriteControls" style="display: none;">
+            <div class="input-group">
+                <label><i class="fas fa-columns"></i> Столбцов (кадров по horiz)</label>
+                <input type="number" id="colsCount" min="1" max="20" value="4">
+            </div>
+            <div class="input-group">
+                <label><i class="fas fa-table-rows"></i> Строк (кадров по vert)</label>
+                <input type="number" id="rowsCount" min="1" max="20" value="1">
+            </div>
+            <button id="applySplitBtn"><i class="fas fa-cut"></i> Разрезать на кадры</button>
+        </div>
+        <div id="warningMsg" style="font-size: 0.8rem; margin-top: 12px; color: #ffbf69;"></div>
+    </div>
+
+    <!-- галерея кадров -->
+    <div class="panel" id="galleryPanel" style="display: none;">
+        <div class="section-title">
+            <i class="fas fa-images"></i> Библиотека кадров
+            <span style="font-size: 0.75rem; background: #2a2f50; padding: 2px 10px; border-radius: 30px;" id="frameCountBadge">0</span>
+        </div>
+        <div class="flex-btns">
+            <button id="addAllFramesBtn" class="secondary"><i class="fas fa-plus-circle"></i> Добавить все кадры</button>
+            <button id="clearSeqBtn" class="secondary danger"><i class="fas fa-trash-alt"></i> Очистить анимацию</button>
+        </div>
+        <div id="framesContainer" class="frames-grid"></div>
+        <div class="file-info" style="margin-top: 10px;">💡 Кликни на любой кадр — он добавится в анимационную последовательность</div>
+    </div>
+
+    <!-- анимация и последовательность -->
+    <div class="panel" id="animationPanel" style="display: none;">
+        <div class="sequence-area">
+            <div class="preview-block">
+                <div><i class="fas fa-play-circle"></i> Предпросмотр анимации</div>
+                <canvas id="animationCanvas" width="200" height="200" class="preview-canvas" style="width:100%; max-width:240px; height:auto; background: #0a0e1a;"></canvas>
+                <div class="speed-slider">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <input type="range" id="fpsSlider" min="3" max="30" value="12" step="1">
+                    <span id="fpsValue">12</span> FPS
+                </div>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button id="playAnimBtn"><i class="fas fa-play"></i> Воспроизвести</button>
+                    <button id="stopAnimBtn" class="secondary"><i class="fas fa-stop"></i> Стоп</button>
+                </div>
+            </div>
+            <div class="sequence-list">
+                <div class="section-title" style="border-left-color: #f5a97f;"><i class="fas fa-film"></i> Последовательность кадров</div>
+                <div id="sequenceContainer" class="seq-items">
+                    <div style="color:#7d85b5; text-align:center; width:100%;">Анимация пуста. Добавь кадры из галереи ☝️</div>
+                </div>
+                <div class="flex-btns" style="margin-top: 12px;">
+                    <button id="clearSequenceBtnSmall" class="secondary danger"><i class="fas fa-eraser"></i> Очистить все</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer>⚡ PixelForge — анимация на основе кадров спрайт-листа. Пиксель-арт гуманоиды оживают за секунды!</footer>
+</div>
+
+<script>
+    (function(){
+        // ---------- STATE ----------
+        let originalImage = null;         // HTMLImageElement
+        let frames = [];                  // массив canvas (каждый кадр)
+        let animationSequence = [];       // индексы кадров (порядок)
+        let currentAnimInterval = null;
+        let isPlaying = false;
+        let currentAnimFrameIdx = 0;
+        let fps = 12;
+        
+        // DOM elements
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const spriteControls = document.getElementById('spriteControls');
+        const galleryPanel = document.getElementById('galleryPanel');
+        const animationPanel = document.getElementById('animationPanel');
+        const colsInput = document.getElementById('colsCount');
+        const rowsInput = document.getElementById('rowsCount');
+        const applySplitBtn = document.getElementById('applySplitBtn');
+        const framesContainer = document.getElementById('framesContainer');
+        const sequenceContainer = document.getElementById('sequenceContainer');
+        const addAllFramesBtn = document.getElementById('addAllFramesBtn');
+        const clearSeqBtn = document.getElementById('clearSeqBtn');
+        const clearSequenceBtnSmall = document.getElementById('clearSequenceBtnSmall');
+        const playAnimBtn = document.getElementById('playAnimBtn');
+        const stopAnimBtn = document.getElementById('stopAnimBtn');
+        const fpsSlider = document.getElementById('fpsSlider');
+        const fpsValue = document.getElementById('fpsValue');
+        const animationCanvas = document.getElementById('animationCanvas');
+        const frameCountBadge = document.getElementById('frameCountBadge');
+        const warningMsg = document.getElementById('warningMsg');
+
+        let ctxAnim = animationCanvas.getContext('2d');
+        ctxAnim.imageSmoothingEnabled = false; // пиксель-арт стиль
+
+        // ---------- утилиты ----------
+        function clearAnimationInterval() {
+            if(currentAnimInterval) {
+                clearInterval(currentAnimInterval);
+                currentAnimInterval = null;
+            }
+            isPlaying = false;
+        }
+
+        function stopAnimation() {
+            clearAnimationInterval();
+            isPlaying = false;
+            drawCurrentAnimationFrame(); // оставить текущий кадр
+        }
+
+        function drawCurrentAnimationFrame() {
+            if(!animationCanvas) return;
+            if(animationSequence.length === 0) {
+                ctxAnim.clearRect(0, 0, animationCanvas.width, animationCanvas.height);
+                ctxAnim.fillStyle = "#0a0e1a";
+                ctxAnim.fillRect(0,0, animationCanvas.width, animationCanvas.height);
+                return;
+            }
+            let frameIdx = animationSequence[currentAnimFrameIdx % animationSequence.length];
+            if(frames[frameIdx]) {
+                let srcCanvas = frames[frameIdx];
+                // очистить и нарисовать с сохранением пропорций
+                ctxAnim.clearRect(0, 0, animationCanvas.width, animationCanvas.height);
+                let w = srcCanvas.width;
+                let h = srcCanvas.height;
+                let scale = Math.min(animationCanvas.width / w, animationCanvas.height / h);
+                let nw = w * scale;
+                let nh = h * scale;
+                let dx = (animationCanvas.width - nw)/2;
+                let dy = (animationCanvas.height - nh)/2;
+                ctxAnim.drawImage(srcCanvas, dx, dy, nw, nh);
+            } else {
+                ctxAnim.clearRect(0,0, animationCanvas.width, animationCanvas.height);
+            }
+        }
+
+        function startAnimation() {
+            if(animationSequence.length === 0) {
+                warningMsg.innerText = "⚠️ Добавьте хотя бы один кадр в последовательность!";
+                return;
+            }
+            clearAnimationInterval();
+            isPlaying = true;
+            currentAnimFrameIdx = 0;
+            drawCurrentAnimationFrame();
+            currentAnimInterval = setInterval(() => {
+                if(animationSequence.length === 0) {
+                    stopAnimation();
+                    return;
+                }
+                currentAnimFrameIdx = (currentAnimFrameIdx + 1) % animationSequence.length;
+                drawCurrentAnimationFrame();
+            }, 1000 / fps);
+        }
+
+        // обновить отображение списка последовательности (миниатюры, кнопки)
+        function renderSequenceList() {
+            sequenceContainer.innerHTML = '';
+            if(animationSequence.length === 0) {
+                sequenceContainer.innerHTML = '<div style="color:#7d85b5; text-align:center; width:100%;">✨ Анимация пуста. Кликни на кадры, чтобы добавить</div>';
+                drawCurrentAnimationFrame();
+                return;
+            }
+            for(let i = 0; i < animationSequence.length; i++) {
+                const frameId = animationSequence[i];
+                const frameCanvas = frames[frameId];
+                if(!frameCanvas) continue;
+                const wrapper = document.createElement('div');
+                wrapper.className = 'seq-item';
+                const idxSpan = document.createElement('div');
+                idxSpan.className = 'badge-index';
+                idxSpan.innerText = `#${frameId}`;
+                const miniCanvas = document.createElement('canvas');
+                miniCanvas.width = frameCanvas.width;
+                miniCanvas.height = frameCanvas.height;
+                let ctxMini = miniCanvas.getContext('2d');
+                ctxMini.drawImage(frameCanvas, 0, 0);
+                miniCanvas.style.width = '52px';
+                miniCanvas.style.height = 'auto';
+                const btnGroup = document.createElement('div');
+                btnGroup.className = 'seq-controls';
+                const upBtn = document.createElement('button');
+                upBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+                upBtn.title = 'Вверх';
+                upBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if(i > 0) {
+                        [animationSequence[i-1], animationSequence[i]] = [animationSequence[i], animationSequence[i-1]];
+                        renderSequenceList();
+                        if(isPlaying) { restartAnimation(); }
+                        else { drawCurrentAnimationFrame(); }
+                    }
+                };
+                const downBtn = document.createElement('button');
+                downBtn.innerHTML = '<i class="fas fa-arrow-down"></i>';
+                downBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if(i < animationSequence.length-1) {
+                        [animationSequence[i+1], animationSequence[i]] = [animationSequence[i], animationSequence[i+1]];
+                        renderSequenceList();
+                        if(isPlaying) { restartAnimation(); }
+                        else { drawCurrentAnimationFrame(); }
+                    }
+                };
+                const delBtn = document.createElement('button');
+                delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    animationSequence.splice(i,1);
+                    renderSequenceList();
+                    if(animationSequence.length === 0) stopAnimation();
+                    else if(isPlaying) restartAnimation();
+                    else drawCurrentAnimationFrame();
+                };
+                btnGroup.append(upBtn, downBtn, delBtn);
+                wrapper.append(idxSpan, miniCanvas, btnGroup);
+                sequenceContainer.appendChild(wrapper);
+            }
+            drawCurrentAnimationFrame();
+        }
+
+        function restartAnimation() {
+            if(isPlaying) {
+                stopAnimation();
+                startAnimation();
+            }
+        }
+
+        // рендер галереи кадров
+        function renderFramesGallery() {
+            framesContainer.innerHTML = '';
+            if(!frames.length) {
+                framesContainer.innerHTML = '<div style="grid-column:1/-1; text-align:center;">Нет кадров. Загрузите спрайт и нажмите "Разрезать"</div>';
+                frameCountBadge.innerText = '0';
+                return;
+            }
+            frameCountBadge.innerText = frames.length;
+            frames.forEach((frameCanvas, idx) => {
+                const card = document.createElement('div');
+                card.className = 'frame-card';
+                const canvasCopy = document.createElement('canvas');
+                canvasCopy.width = frameCanvas.width;
+                canvasCopy.height = frameCanvas.height;
+                let ctxCopy = canvasCopy.getContext('2d');
+                ctxCopy.drawImage(frameCanvas, 0, 0);
+                canvasCopy.style.width = '100%';
+                canvasCopy.style.height = 'auto';
+                const label = document.createElement('div');
+                label.className = 'frame-label';
+                label.innerText = `кадр ${idx}`;
+                card.appendChild(canvasCopy);
+                card.appendChild(label);
+                card.addEventListener('click', () => {
+                    // добавить в последовательность
+                    animationSequence.push(idx);
+                    renderSequenceList();
+                    if(isPlaying) restartAnimation();
+                    warningMsg.innerText = `➕ Кадр ${idx} добавлен в анимацию`;
+                    setTimeout(()=>{ if(warningMsg.innerText.includes('добавлен')) warningMsg.innerText = '';}, 1500);
+                });
+                framesContainer.appendChild(card);
+            });
+        }
+
+        // генерация кадров по изображению, строкам/столбцам
+        function generateFramesFromImage() {
+            if(!originalImage) {
+                warningMsg.innerText = "Изображение не загружено";
+                return false;
+            }
+            const cols = parseInt(colsInput.value, 10);
+            const rows = parseInt(rowsInput.value, 10);
+            if(isNaN(cols) || isNaN(rows) || cols < 1 || rows < 1) {
+                warningMsg.innerText = "Кол-во строк/столбцов должно быть >=1";
+                return false;
+            }
+            const imgW = originalImage.width;
+            const imgH = originalImage.height;
+            const frameW = imgW / cols;
+            const frameH = imgH / rows;
+            if(!Number.isInteger(frameW) || !Number.isInteger(frameH)) {
+                warningMsg.innerText = `⚠️ Внимание: кадры получатся дробными (${frameW.toFixed(1)}x${frameH.toFixed(1)}). Рекомендуем использовать спрайт, где размеры кратны сетке. Но кадры будут вырезаны честно.`;
+            } else {
+                warningMsg.innerText = `✓ Кадры ${Math.floor(frameW)}x${Math.floor(frameH)} пикс. Всего кадров: ${cols*rows}`;
+            }
+            const newFrames = [];
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = imgW;
+            tempCanvas.height = imgH;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(originalImage, 0, 0);
+            
+            for(let row = 0; row < rows; row++) {
+                for(let col = 0; col < cols; col++) {
+                    const sx = col * frameW;
+                    const sy = row * frameH;
+                    const sw = frameW;
+                    const sh = frameH;
+                    const frameCanvas = document.createElement('canvas');
+                    frameCanvas.width = sw;
+                    frameCanvas.height = sh;
+                    const fCtx = frameCanvas.getContext('2d');
+                    fCtx.drawImage(tempCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+                    newFrames.push(frameCanvas);
+                }
+            }
+            frames = newFrames;
+            // сброс анимационной последовательности (старые индексы не валидны)
+            animationSequence = [];
+            renderFramesGallery();
+            renderSequenceList();
+            if(isPlaying) stopAnimation();
+            drawCurrentAnimationFrame();
+            return true;
+        }
+
+        // загрузка изображения
+        function loadImageFromFile(file) {
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalImage = img;
+                    // показать панели
+                    spriteControls.style.display = 'flex';
+                    galleryPanel.style.display = 'block';
+                    animationPanel.style.display = 'block';
+                    warningMsg.innerText = `✅ Загружено: ${img.width}x${img.height} px. Укажите сетку кадров (столбцы/строки) и нажмите "Разрезать".`;
+                    // автоматически предположим оптимальное? Просто даем стандартные значения
+                    if(img.width / img.height > 1.5) colsInput.value = 4;
+                    if(img.height > img.width) rowsInput.value = 2;
+                    // очистить предыдущие фреймы
+                    frames = [];
+                    animationSequence = [];
+                    renderFramesGallery();
+                    renderSequenceList();
+                    stopAnimation();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // обработчики событий
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.style.borderColor = '#b3a6ff';
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.style.borderColor = 'rgba(150, 170, 255, 0.5)';
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.style.borderColor = 'rgba(150, 170, 255, 0.5)';
+            const file = e.dataTransfer.files[0];
+            if(file && file.type === 'image/png') {
+                loadImageFromFile(file);
+            } else {
+                warningMsg.innerText = "Пожалуйста, загрузите PNG изображение (пиксель-арт).";
+            }
+        });
+        fileInput.addEventListener('change', (e) => {
+            if(e.target.files.length) loadImageFromFile(e.target.files[0]);
+        });
+
+        applySplitBtn.addEventListener('click', () => {
+            if(originalImage) {
+                generateFramesFromImage();
+            } else {
+                warningMsg.innerText = "Сначала загрузите изображение!";
+            }
+        });
+
+        addAllFramesBtn.addEventListener('click', () => {
+            if(frames.length === 0) {
+                warningMsg.innerText = "Нет кадров. Сначала нарежьте спрайт!";
+                return;
+            }
+            for(let i=0; i<frames.length; i++) animationSequence.push(i);
+            renderSequenceList();
+            if(isPlaying) restartAnimation();
+            else drawCurrentAnimationFrame();
+            warningMsg.innerText = `➕ Все ${frames.length} кадров добавлены в последовательность.`;
+            setTimeout(()=>{ if(warningMsg.innerText.includes('Все')) warningMsg.innerText = '';}, 2000);
+        });
+
+        function clearSequence() {
+            animationSequence = [];
+            renderSequenceList();
+            stopAnimation();
+            drawCurrentAnimationFrame();
+            warningMsg.innerText = "🧹 Анимация очищена.";
+            setTimeout(()=>{ if(warningMsg.innerText.includes('очищена')) warningMsg.innerText = '';}, 1200);
+        }
+        clearSeqBtn.addEventListener('click', clearSequence);
+        clearSequenceBtnSmall.addEventListener('click', clearSequence);
+
+        playAnimBtn.addEventListener('click', () => {
+            if(animationSequence.length === 0) {
+                warningMsg.innerText = "Нет кадров в последовательности! Добавьте кадры из галереи.";
+                return;
+            }
+            startAnimation();
+        });
+        stopAnimBtn.addEventListener('click', stopAnimation);
+        
+        fpsSlider.addEventListener('input', (e) => {
+            fps = parseInt(e.target.value, 10);
+            fpsValue.innerText = fps;
+            if(isPlaying) {
+                restartAnimation();
+            }
+        });
+        
+        // инициализация холста
+        animationCanvas.width = 240;
+        animationCanvas.height = 240;
+        ctxAnim.imageSmoothingEnabled = false;
+        drawCurrentAnimationFrame();
+    })();
+</script>
+</body>
+</html>
