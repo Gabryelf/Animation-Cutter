@@ -55,7 +55,6 @@
         exampleCanvas.height = 80;
         ctx.imageSmoothingEnabled = false;
         
-        // Рисуем пример спрайт-листа (ходьба персонажа)
         const frameWidth = 64;
         const frameHeight = 64;
         const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dfe6e9'];
@@ -63,17 +62,13 @@
         for (let i = 0; i < 5; i++) {
             const x = i * frameWidth;
             const y = 8;
-            // Тело
             ctx.fillStyle = colors[i % colors.length];
             ctx.fillRect(x + 16, y + 20, 32, 40);
-            // Голова
             ctx.fillStyle = '#ffd93d';
             ctx.fillRect(x + 22, y + 8, 20, 20);
-            // Глаза
             ctx.fillStyle = '#2d3436';
             ctx.fillRect(x + 28, y + 14, 4, 4);
             ctx.fillRect(x + 36, y + 14, 4, 4);
-            // Руки (анимация ходьбы)
             ctx.fillStyle = colors[i % colors.length];
             if (i % 2 === 0) {
                 ctx.fillRect(x + 8, y + 28, 12, 8);
@@ -82,7 +77,6 @@
                 ctx.fillRect(x + 8, y + 32, 12, 8);
                 ctx.fillRect(x + 44, y + 28, 12, 8);
             }
-            // Ноги
             ctx.fillRect(x + 20, y + 60, 8, 12);
             ctx.fillRect(x + 36, y + 60, 8, 12);
         }
@@ -113,100 +107,401 @@
     drawExampleSprite();
     drawExampleAnimation();
 
-    // ---------- GIF Экспорт (с использованием gif.js) ----------
-    function downloadAsGif() {
+    // ---------- ЭКСПОРТ В GIF с помощью gifshot ----------
+    async function exportAsGIF() {
         if (animationSequence.length === 0) {
             warningMsg.innerText = "❌ Нет кадров для экспорта! Добавьте кадры в анимацию.";
             return;
         }
         
-        warningMsg.innerText = "⏳ Создание GIF... Пожалуйста, подождите.";
+        warningMsg.innerHTML = "🎨 Создание GIF... <span id='gifProgress'>0%</span>";
         
-        // Определяем размеры GIF (максимальный размер кадра)
+        // Собираем выбранные кадры
+        const selectedFrames = [];
+        for (let idx of animationSequence) {
+            const frame = frames[idx];
+            if (frame) selectedFrames.push(frame);
+        }
+        
+        if (selectedFrames.length === 0) {
+            warningMsg.innerText = "❌ Нет валидных кадров!";
+            return;
+        }
+        
+        // Определяем единый размер для всех кадров
         let maxWidth = 0, maxHeight = 0;
+        for (let frame of selectedFrames) {
+            maxWidth = Math.max(maxWidth, frame.width);
+            maxHeight = Math.max(maxHeight, frame.height);
+        }
+        
+        // Ограничиваем размер GIF (не больше 500px)
+        const maxGifSize = 500;
+        let scale = 1;
+        if (maxWidth > maxGifSize || maxHeight > maxGifSize) {
+            scale = Math.min(maxGifSize / maxWidth, maxGifSize / maxHeight);
+        }
+        
+        const gifWidth = Math.floor(maxWidth * scale);
+        const gifHeight = Math.floor(maxHeight * scale);
+        
+        // Подготавливаем изображения для GIF
+        const images = [];
+        
+        for (let i = 0; i < selectedFrames.length; i++) {
+            const frame = selectedFrames[i];
+            
+            // Создаем новый canvas для каждого кадра
+            const frameCanvas = document.createElement('canvas');
+            frameCanvas.width = gifWidth;
+            frameCanvas.height = gifHeight;
+            const frameCtx = frameCanvas.getContext('2d');
+            
+            // Очищаем canvas (важно!)
+            frameCtx.clearRect(0, 0, gifWidth, gifHeight);
+            
+            // Заливаем черным фоном (или можно прозрачным)
+            frameCtx.fillStyle = '#000000';
+            frameCtx.fillRect(0, 0, gifWidth, gifHeight);
+            
+            const drawScale = Math.min(gifWidth / frame.width, gifHeight / frame.height);
+            const drawW = frame.width * drawScale;
+            const drawH = frame.height * drawScale;
+            const dx = (gifWidth - drawW) / 2;
+            const dy = (gifHeight - drawH) / 2;
+            
+            frameCtx.drawImage(frame, dx, dy, drawW, drawH);
+            
+            // Конвертируем в Image
+            const img = new Image();
+            img.src = frameCanvas.toDataURL();
+            await new Promise((resolve) => {
+                img.onload = resolve;
+            });
+            images.push(img);
+            
+            const progress = Math.round(((i + 1) / selectedFrames.length) * 50);
+            const progressSpan = document.getElementById('gifProgress');
+            if (progressSpan) progressSpan.innerText = `${progress}%`;
+        }
+        
+        // Создаем GIF с помощью gifshot
+        const frameDelay = Math.floor(1000 / fps);
+        
+        // Используем fallback для GIF с правильной очисткой
+        const options = {
+            images: images,
+            gifWidth: gifWidth,
+            gifHeight: gifHeight,
+            frameDuration: frameDelay / 10,
+            numWorkers: 2,
+            sampleInterval: 10,
+            transparent: null, // Отключаем прозрачность
+            backgroundColor: '#000000' // Черный фон
+        };
+        
+        gifshot.createGIF(options, (obj) => {
+            if (!obj.error) {
+                const progressSpan = document.getElementById('gifProgress');
+                if (progressSpan) progressSpan.innerText = `100%`;
+                
+                const url = obj.image;
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `pixelforge_animation_${Date.now()}.gif`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                warningMsg.innerHTML = "✅ GIF успешно создан и скачан!";
+                setTimeout(() => {
+                    if (warningMsg.innerHTML.includes("успешно")) warningMsg.innerHTML = '';
+                }, 3000);
+            } else {
+                console.error('GIF Error:', obj.error);
+                warningMsg.innerHTML = "❌ Ошибка создания GIF. Попробуйте WebM формат.";
+            }
+        });
+    }
+    
+    // ---------- ЭКСПОРТ В WEBM (запасной вариант) ----------
+    async function exportAsWebM() {
+        if (animationSequence.length === 0) {
+            warningMsg.innerText = "❌ Нет кадров для экспорта! Добавьте кадры в анимацию.";
+            return;
+        }
+        
+        warningMsg.innerHTML = "⏳ Создание WebM видео... <span id='webmProgress'>0%</span>";
+        
+        const framesList = [];
+        let maxWidth = 0, maxHeight = 0;
+        
         for (let idx of animationSequence) {
             const frame = frames[idx];
             if (frame) {
                 maxWidth = Math.max(maxWidth, frame.width);
                 maxHeight = Math.max(maxHeight, frame.height);
+                framesList.push(frame);
             }
         }
         
-        // Оптимальный размер для превью (не больше 300px)
-        const scale = Math.min(300 / maxWidth, 300 / maxHeight, 3);
-        const gifWidth = Math.floor(maxWidth * scale);
-        const gifHeight = Math.floor(maxHeight * scale);
-        
-        // Создаем GIF
-        const gif = new GIF({
-            workers: 2,
-            quality: 10,
-            width: gifWidth,
-            height: gifHeight,
-            workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
-        });
-        
-        // Добавляем кадры
-        const delay = Math.floor(1000 / fps);
-        let processedFrames = 0;
-        
-        for (let i = 0; i < animationSequence.length; i++) {
-            const frameIdx = animationSequence[i];
-            const sourceCanvas = frames[frameIdx];
-            if (!sourceCanvas) continue;
-            
-            // Создаем временный canvas с нужным размером
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = gifWidth;
-            tempCanvas.height = gifHeight;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.imageSmoothingEnabled = false;
-            
-            // Рисуем с сохранением пропорций
-            const w = sourceCanvas.width;
-            const h = sourceCanvas.height;
-            const scaleX = gifWidth / w;
-            const scaleY = gifHeight / h;
-            const drawScale = Math.min(scaleX, scaleY);
-            const drawW = w * drawScale;
-            const drawH = h * drawScale;
-            const dx = (gifWidth - drawW) / 2;
-            const dy = (gifHeight - drawH) / 2;
-            
-            tempCtx.drawImage(sourceCanvas, dx, dy, drawW, drawH);
-            
-            gif.addFrame(tempCanvas, { delay: delay, copy: true });
-            processedFrames++;
+        if (framesList.length === 0) {
+            warningMsg.innerText = "❌ Нет валидных кадров для экспорта!";
+            return;
         }
         
-        gif.on('finished', function(blob) {
+        const maxSize = 800;
+        let scale = 1;
+        if (maxWidth > maxSize || maxHeight > maxSize) {
+            scale = Math.min(maxSize / maxWidth, maxSize / maxHeight);
+        }
+        
+        const videoWidth = Math.floor(maxWidth * scale);
+        const videoHeight = Math.floor(maxHeight * scale);
+        
+        const preparedFrames = [];
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = videoWidth;
+        tempCanvas.height = videoHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.imageSmoothingEnabled = false;
+        
+        for (let i = 0; i < framesList.length; i++) {
+            const frame = framesList[i];
+            tempCtx.clearRect(0, 0, videoWidth, videoHeight);
+            
+            const drawScale = Math.min(videoWidth / frame.width, videoHeight / frame.height);
+            const drawW = frame.width * drawScale;
+            const drawH = frame.height * drawScale;
+            const dx = (videoWidth - drawW) / 2;
+            const dy = (videoHeight - drawH) / 2;
+            
+            tempCtx.drawImage(frame, dx, dy, drawW, drawH);
+            
+            const clonedCanvas = document.createElement('canvas');
+            clonedCanvas.width = videoWidth;
+            clonedCanvas.height = videoHeight;
+            clonedCanvas.getContext('2d').drawImage(tempCanvas, 0, 0);
+            preparedFrames.push(clonedCanvas);
+            
+            const progress = Math.round(((i + 1) / framesList.length) * 100);
+            const progressSpan = document.getElementById('webmProgress');
+            if (progressSpan) progressSpan.innerText = `${progress}%`;
+            
+            await new Promise(r => setTimeout(r, 5));
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = videoWidth;
+        canvas.height = videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        
+        const stream = canvas.captureStream(fps);
+        const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm',
+            videoBitsPerSecond: 5000000
+        });
+        
+        const chunks = [];
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) chunks.push(e.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
+            
             const a = document.createElement('a');
             a.href = url;
-            a.download = `pixelforge_animation_${Date.now()}.gif`;
+            a.download = `pixelforge_animation_${Date.now()}.webm`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            warningMsg.innerText = "✅ GIF успешно создан и скачан!";
+            
+            warningMsg.innerHTML = "✅ Видео WebM успешно создано!";
             setTimeout(() => {
-                if (warningMsg.innerText.includes("успешно")) warningMsg.innerText = '';
+                if (warningMsg.innerHTML.includes("успешно")) warningMsg.innerHTML = '';
             }, 3000);
-        });
+        };
         
-        gif.on('progress', function(p) {
-            warningMsg.innerText = `⏳ Создание GIF: ${Math.round(p * 100)}%`;
-        });
+        mediaRecorder.start();
         
-        gif.render();
+        let frameIndex = 0;
+        const interval = setInterval(() => {
+            if (frameIndex >= preparedFrames.length) {
+                clearInterval(interval);
+                mediaRecorder.stop();
+                return;
+            }
+            ctx.clearRect(0, 0, videoWidth, videoHeight);
+            ctx.drawImage(preparedFrames[frameIndex], 0, 0);
+            frameIndex++;
+        }, 1000 / fps);
     }
     
-    // Привязываем кнопку скачивания
-    if (downloadGifBtn) {
-        downloadGifBtn.addEventListener('click', downloadAsGif);
+    // ---------- ЭКСПОРТ В PNG СПРАЙТ-ЛИСТ ----------
+    function exportAsPNGSequence() {
+        if (animationSequence.length === 0) {
+            warningMsg.innerText = "❌ Нет кадров для экспорта! Добавьте кадры в анимацию.";
+            return;
+        }
+        
+        warningMsg.innerText = "📦 Создание PNG спрайт-листа...";
+        
+        const selectedFrames = [];
+        for (let idx of animationSequence) {
+            const frame = frames[idx];
+            if (frame) selectedFrames.push(frame);
+        }
+        
+        if (selectedFrames.length === 0) {
+            warningMsg.innerText = "❌ Нет валидных кадров!";
+            return;
+        }
+        
+        const frameWidth = selectedFrames[0].width;
+        const frameHeight = selectedFrames[0].height;
+        const framesPerRow = Math.min(4, selectedFrames.length);
+        const rows = Math.ceil(selectedFrames.length / framesPerRow);
+        
+        const spriteSheet = document.createElement('canvas');
+        spriteSheet.width = frameWidth * framesPerRow;
+        spriteSheet.height = frameHeight * rows;
+        const ctx = spriteSheet.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        
+        for (let i = 0; i < selectedFrames.length; i++) {
+            const col = i % framesPerRow;
+            const row = Math.floor(i / framesPerRow);
+            const x = col * frameWidth;
+            const y = row * frameHeight;
+            ctx.drawImage(selectedFrames[i], x, y);
+        }
+        
+        const link = document.createElement('a');
+        link.download = `pixelforge_spritesheet_${Date.now()}.png`;
+        link.href = spriteSheet.toDataURL('image/png');
+        link.click();
+        
+        warningMsg.innerText = "✅ PNG спрайт-лист успешно скачан!";
+        setTimeout(() => {
+            if (warningMsg.innerText.includes("успешно")) warningMsg.innerText = '';
+        }, 3000);
     }
+    
+    // ---------- ЭКСПОРТ В ОТДЕЛЬНЫЕ PNG ----------
+    function exportAsIndividualPNGs() {
+        if (animationSequence.length === 0) {
+            warningMsg.innerText = "❌ Нет кадров для экспорта!";
+            return;
+        }
+        
+        warningMsg.innerText = "📸 Скачивание отдельных PNG...";
+        
+        const selectedFrames = [];
+        for (let idx of animationSequence) {
+            const frame = frames[idx];
+            if (frame) selectedFrames.push(frame);
+        }
+        
+        function downloadNext(index) {
+            if (index >= selectedFrames.length) {
+                warningMsg.innerText = `✅ Скачано ${selectedFrames.length} PNG файлов!`;
+                setTimeout(() => {
+                    if (warningMsg.innerText.includes("Скачано")) warningMsg.innerText = '';
+                }, 3000);
+                return;
+            }
+            
+            const frame = selectedFrames[index];
+            const link = document.createElement('a');
+            link.download = `frame_${String(index).padStart(3, '0')}.png`;
+            link.href = frame.toDataURL('image/png');
+            link.click();
+            
+            setTimeout(() => downloadNext(index + 1), 100);
+        }
+        
+        downloadNext(0);
+    }
+    
+    // ---------- ДОБАВЛЯЕМ НОВЫЕ КНОПКИ В ИНТЕРФЕЙС ----------
+    function addExportButtons() {
+        const previewBlock = document.querySelector('.preview-block');
+        if (!previewBlock) return;
+        
+        const oldExportContainer = previewBlock.querySelector('.export-container');
+        if (oldExportContainer) {
+            oldExportContainer.remove();
+        }
+        
+        const exportContainer = document.createElement('div');
+        exportContainer.className = 'export-container';
+        exportContainer.style.marginTop = '15px';
+        exportContainer.style.display = 'flex';
+        exportContainer.style.flexDirection = 'column';
+        exportContainer.style.gap = '8px';
+        
+        const exportTitle = document.createElement('div');
+        exportTitle.style.fontSize = '0.8rem';
+        exportTitle.style.color = '#a78bfa';
+        exportTitle.style.marginBottom = '5px';
+        exportTitle.innerHTML = '<i class="fas fa-download"></i> Экспорт анимации:';
+        
+        const btnGIF = document.createElement('button');
+        btnGIF.innerHTML = '<i class="fas fa-file-image"></i> Скачать как GIF';
+        btnGIF.style.background = 'linear-gradient(105deg, #059669, #047857)';
+        btnGIF.style.width = '100%';
+        btnGIF.onclick = exportAsGIF;
+        
+        const btnWebM = document.createElement('button');
+        btnWebM.innerHTML = '<i class="fas fa-video"></i> Скачать WebM (видео)';
+        btnWebM.style.background = 'linear-gradient(105deg, #2563eb, #1d4ed8)';
+        btnWebM.style.width = '100%';
+        btnWebM.onclick = exportAsWebM;
+        
+        const btnSpriteSheet = document.createElement('button');
+        btnSpriteSheet.innerHTML = '<i class="fas fa-table"></i> Скачать PNG спрайт-лист';
+        btnSpriteSheet.style.background = 'linear-gradient(105deg, #d97706, #b45309)';
+        btnSpriteSheet.style.width = '100%';
+        btnSpriteSheet.onclick = exportAsPNGSequence;
+        
+        const btnIndividual = document.createElement('button');
+        btnIndividual.innerHTML = '<i class="fas fa-images"></i> Скачать отдельные PNG';
+        btnIndividual.style.background = 'linear-gradient(105deg, #7c3aed, #6d28d9)';
+        btnIndividual.style.width = '100%';
+        btnIndividual.onclick = exportAsIndividualPNGs;
+        
+        exportContainer.appendChild(exportTitle);
+        exportContainer.appendChild(btnGIF);
+        exportContainer.appendChild(btnWebM);
+        exportContainer.appendChild(btnSpriteSheet);
+        exportContainer.appendChild(btnIndividual);
+        
+        const existingButtons = previewBlock.querySelector('div[style*="display: flex; gap: 12px; justify-content: center;"]');
+        if (existingButtons) {
+            existingButtons.after(exportContainer);
+        } else {
+            previewBlock.appendChild(exportContainer);
+        }
+    }
+    
+    // Переопределяем старую кнопку на GIF
+    if (downloadGifBtn) {
+        const oldBtnClone = downloadGifBtn.cloneNode(true);
+        downloadGifBtn.parentNode.replaceChild(oldBtnClone, downloadGifBtn);
+        const newDownloadBtn = document.getElementById('downloadGifBtn');
+        if (newDownloadBtn) {
+            newDownloadBtn.onclick = exportAsGIF;
+            newDownloadBtn.innerHTML = '<i class="fas fa-download"></i> Скачать GIF';
+        }
+    }
+    
+    setTimeout(addExportButtons, 100);
 
-    // ---------- Остальная логика (без изменений) ----------
+    // ---------- ОСНОВНАЯ ЛОГИКА АНИМАЦИИ ----------
     function clearAnimationInterval() {
         if(currentAnimInterval) {
             clearInterval(currentAnimInterval);
